@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import API from '../api';
 
 export default function Dashboard() {
@@ -9,7 +10,15 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    // Fetch pantry items on component load
+    const navigate = useNavigate();
+
+    // Logout Function
+    const handleLogout = () => {
+        localStorage.removeItem('token'); // Clears the auth token
+        navigate('/login');               // Redirects back to Login
+    };
+
+    // Fetch pantry items on component mount
     const fetchItems = async () => {
         try {
             setError('');
@@ -17,7 +26,7 @@ export default function Dashboard() {
             setItems(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error("Fetch items error:", err);
-            setError(err.response?.data?.message || 'Failed to fetch pantry items. Please ensure you are logged in.');
+            setError(err.response?.data?.message || 'Failed to fetch pantry items. Please log in again.');
         }
     };
 
@@ -33,8 +42,7 @@ export default function Dashboard() {
         setError('');
         try {
             const { data } = await API.post('/pantry', { name, quantity });
-            
-            // Instantly append new item to state if returned, otherwise refetch
+
             if (data && (data._id || data.id)) {
                 setItems((prev) => [...prev, data]);
             } else {
@@ -45,7 +53,7 @@ export default function Dashboard() {
             setQuantity('');
         } catch (err) {
             console.error("Add item error:", err);
-            setError(err.response?.data?.message || 'Failed to add ingredient to database.');
+            setError(err.response?.data?.message || 'Failed to add ingredient.');
         }
     };
 
@@ -61,7 +69,7 @@ export default function Dashboard() {
         }
     };
 
-    // Generate AI Recipe using Gemini endpoint
+    // Generate AI Recipe
     const handleGenerateRecipe = async () => {
         if (items.length === 0) {
             setError('Please add at least one ingredient to your pantry before generating a recipe.');
@@ -75,7 +83,6 @@ export default function Dashboard() {
         try {
             const { data } = await API.post('/ai/generate-recipe');
 
-            // Robust response parsing for string or object formats
             if (typeof data === 'string') {
                 setRecipe(data);
             } else if (data && data.recipe) {
@@ -86,7 +93,7 @@ export default function Dashboard() {
         } catch (err) {
             console.error("Recipe generation error:", err);
             const serverMsg = err.response?.data?.message || err.response?.data?.error;
-            setError(serverMsg || 'Failed to generate recipe. Verify GEMINI_API_KEY on Render backend.');
+            setError(serverMsg || 'Failed to generate recipe. Check server logs.');
         } finally {
             setLoading(false);
         }
@@ -100,20 +107,31 @@ export default function Dashboard() {
                     <h1 className="text-3xl font-bold">Pantry Overview</h1>
                     <p className="text-emerald-100 text-sm mt-1">Manage ingredients & transform them into AI recipes</p>
                 </div>
-                <button
-                    onClick={handleGenerateRecipe}
-                    disabled={loading || items.length === 0}
-                    className="bg-white text-emerald-800 hover:bg-emerald-50 px-5 py-3 rounded-xl font-bold shadow transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                    {loading ? (
-                        <span className="animate-pulse">✨ Cooking up recipe...</span>
-                    ) : (
-                        <span>✨ Generate AI Recipe</span>
-                    )}
-                </button>
+
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleGenerateRecipe}
+                        disabled={loading || items.length === 0}
+                        className="bg-white text-emerald-800 hover:bg-emerald-50 px-5 py-3 rounded-xl font-bold shadow transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                        {loading ? (
+                            <span className="animate-pulse">✨ Cooking up recipe...</span>
+                        ) : (
+                            <span>✨ Generate AI Recipe</span>
+                        )}
+                    </button>
+
+                    {/* Logout Button */}
+                    <button
+                        onClick={handleLogout}
+                        className="bg-emerald-800/60 hover:bg-emerald-900 text-white px-4 py-3 rounded-xl font-semibold transition border border-emerald-500/30 text-sm"
+                    >
+                        Logout
+                    </button>
+                </div>
             </div>
 
-            {/* Global Error Banner */}
+            {/* Error Banner */}
             {error && (
                 <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200 text-sm flex justify-between items-center">
                     <span>{error}</span>
