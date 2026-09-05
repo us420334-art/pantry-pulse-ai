@@ -9,6 +9,7 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
+    // Fetch pantry items on component load
     const fetchItems = async () => {
         try {
             setError('');
@@ -16,7 +17,7 @@ export default function Dashboard() {
             setItems(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error("Fetch items error:", err);
-            setError(err.response?.data?.message || 'Failed to fetch pantry items.');
+            setError(err.response?.data?.message || 'Failed to fetch pantry items. Please ensure you are logged in.');
         }
     };
 
@@ -24,30 +25,31 @@ export default function Dashboard() {
         fetchItems();
     }, []);
 
+    // Add a new ingredient
     const handleAddItem = async (e) => {
         e.preventDefault();
         if (!name.trim()) return;
-        
+
         setError('');
         try {
             const { data } = await API.post('/pantry', { name, quantity });
             
-            // Instantly append new item to screen
+            // Instantly append new item to state if returned, otherwise refetch
             if (data && (data._id || data.id)) {
                 setItems((prev) => [...prev, data]);
             } else {
-                // Fallback fetch if server doesn't return full object
                 fetchItems();
             }
-            
+
             setName('');
             setQuantity('');
         } catch (err) {
             console.error("Add item error:", err);
-            setError(err.response?.data?.message || err.message || 'Failed to add item to database.');
+            setError(err.response?.data?.message || 'Failed to add ingredient to database.');
         }
     };
 
+    // Delete an ingredient
     const handleDeleteItem = async (id) => {
         try {
             setError('');
@@ -55,20 +57,36 @@ export default function Dashboard() {
             setItems((prev) => prev.filter((item) => (item._id || item.id) !== id));
         } catch (err) {
             console.error("Delete item error:", err);
-            setError(err.response?.data?.message || 'Failed to delete item.');
+            setError(err.response?.data?.message || 'Failed to delete ingredient.');
         }
     };
 
+    // Generate AI Recipe using Gemini endpoint
     const handleGenerateRecipe = async () => {
+        if (items.length === 0) {
+            setError('Please add at least one ingredient to your pantry before generating a recipe.');
+            return;
+        }
+
         setLoading(true);
         setRecipe('');
         setError('');
+
         try {
             const { data } = await API.post('/ai/generate-recipe');
-            setRecipe(data.recipe);
+
+            // Robust response parsing for string or object formats
+            if (typeof data === 'string') {
+                setRecipe(data);
+            } else if (data && data.recipe) {
+                setRecipe(data.recipe);
+            } else {
+                setRecipe(JSON.stringify(data, null, 2));
+            }
         } catch (err) {
             console.error("Recipe generation error:", err);
-            setError(err.response?.data?.message || 'Failed to generate recipe.');
+            const serverMsg = err.response?.data?.message || err.response?.data?.error;
+            setError(serverMsg || 'Failed to generate recipe. Verify GEMINI_API_KEY on Render backend.');
         } finally {
             setLoading(false);
         }
@@ -95,14 +113,15 @@ export default function Dashboard() {
                 </button>
             </div>
 
+            {/* Global Error Banner */}
             {error && (
                 <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200 text-sm flex justify-between items-center">
                     <span>{error}</span>
-                    <button onClick={() => setError('')} className="font-bold ml-4">✕</button>
+                    <button onClick={() => setError('')} className="font-bold ml-4 hover:text-red-800">✕</button>
                 </div>
             )}
 
-            {/* Add Item Form Card */}
+            {/* Add Item Form */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <h2 className="text-lg font-semibold text-slate-800 mb-4">Add New Ingredient</h2>
                 <form onSubmit={handleAddItem} className="grid grid-cols-1 sm:grid-cols-12 gap-3">
@@ -136,7 +155,7 @@ export default function Dashboard() {
                 </form>
             </div>
 
-            {/* Pantry List Card */}
+            {/* Pantry List Section */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <h2 className="text-lg font-semibold text-slate-800 mb-4">Current Ingredients ({items.length})</h2>
                 {items.length === 0 ? (
@@ -166,14 +185,14 @@ export default function Dashboard() {
                 )}
             </div>
 
-            {/* AI Recipe Section */}
+            {/* AI Generated Recipe Result */}
             {recipe && (
-                <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/80 p-6 rounded-2xl shadow-sm">
-                    <div className="flex items-center gap-2 mb-3">
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/80 p-6 rounded-2xl shadow-sm space-y-3">
+                    <div className="flex items-center gap-2">
                         <span className="text-xl">🍳</span>
                         <h2 className="text-xl font-bold text-amber-900">AI Suggested Recipe</h2>
                     </div>
-                    <div className="text-slate-700 whitespace-pre-wrap leading-relaxed text-sm bg-white/70 p-4 rounded-xl border border-amber-100">
+                    <div className="text-slate-700 whitespace-pre-wrap leading-relaxed text-sm bg-white/80 p-4 rounded-xl border border-amber-100 shadow-inner">
                         {recipe}
                     </div>
                 </div>

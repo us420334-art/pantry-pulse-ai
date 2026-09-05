@@ -1,30 +1,38 @@
-import { GoogleGenAI } from '@google/genai';
-import PantryItem from '../models/PantryItem.js';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import PantryItem from "../models/PantryItem.js"; // Adjust path to your model
 
 export const generateRecipe = async (req, res) => {
     try {
-        console.log('⏳ 1. Fetching pantry items from MongoDB...');
-        const items = await PantryItem.find({ user: req.user._id });
-        const itemNames = items.map((item) => item.name).join(', ');
+        // 1. Fetch current items for the logged-in user
+        const items = await PantryItem.find({ user: req.user.id });
 
-        if (!itemNames) {
-            return res.status(400).json({ message: 'No pantry items found to generate recipes.' });
+        if (!items || items.length === 0) {
+            return res.status(400).json({
+                message: "Your pantry is empty. Please add ingredients first."
+            });
         }
 
-        console.log(`📦 2. Found items: ${itemNames}. Calling Gemini API...`);
+        // 2. Format ingredients into a string
+        const ingredientList = items
+            .map((item) => `${item.name}${item.quantity ? ` (${item.quantity})` : ""}`)
+            .join(", ");
 
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        // 3. Initialize Gemini API
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-3.6-flash',
-            contents: `Give a quick, concise recipe using: ${itemNames}`,
-        });
+        const prompt = `I have the following ingredients in my pantry: ${ingredientList}. Suggest a creative, step-by-step recipe I can make with these.`;
 
-        console.log('✅ 3. Gemini responded successfully!');
+        const result = await model.generateContent(prompt);
+        const recipeText = result.response.text();
 
-        return res.status(200).json({ recipe: response.text });
+        // 4. Return recipe object to frontend
+        return res.status(200).json({ recipe: recipeText });
     } catch (error) {
-        console.error('❌ Gemini Error:', error);
-        return res.status(500).json({ message: error.message || 'Failed to generate recipe' });
+        console.error("AI Recipe Generation Error:", error);
+        return res.status(500).json({
+            message: "Failed to generate recipe. Check server logs or Gemini API key.",
+            error: error.message
+        });
     }
 };
