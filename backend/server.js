@@ -15,6 +15,11 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+// Health Check Route
+app.get('/', (req, res) => {
+  res.status(200).json({ message: "Pantry Pulse AI API is running successfully!" });
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/pantry', pantryRoutes);
