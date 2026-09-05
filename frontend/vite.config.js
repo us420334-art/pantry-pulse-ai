@@ -8,4 +8,13 @@ export default defineConfig({
     react(),
     tailwindcss()
   ],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://pantry-pulse-ai.onrender.com',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
 })
