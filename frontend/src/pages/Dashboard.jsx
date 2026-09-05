@@ -12,13 +12,11 @@ export default function Dashboard() {
 
     const navigate = useNavigate();
 
-    // Logout Function
     const handleLogout = () => {
-        localStorage.removeItem('token'); // Clears the auth token
-        navigate('/login');               // Redirects back to Login
+        localStorage.removeItem('token');
+        navigate('/login');
     };
 
-    // Fetch pantry items on component mount
     const fetchItems = async () => {
         try {
             setError('');
@@ -26,7 +24,7 @@ export default function Dashboard() {
             setItems(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error("Fetch items error:", err);
-            setError(err.response?.data?.message || 'Failed to fetch pantry items. Please log in again.');
+            setError(err.response?.data?.message || 'Failed to sync pantry state.');
         }
     };
 
@@ -34,7 +32,6 @@ export default function Dashboard() {
         fetchItems();
     }, []);
 
-    // Add a new ingredient
     const handleAddItem = async (e) => {
         e.preventDefault();
         if (!name.trim()) return;
@@ -42,22 +39,19 @@ export default function Dashboard() {
         setError('');
         try {
             const { data } = await API.post('/pantry', { name, quantity });
-
             if (data && (data._id || data.id)) {
                 setItems((prev) => [...prev, data]);
             } else {
                 fetchItems();
             }
-
             setName('');
             setQuantity('');
         } catch (err) {
             console.error("Add item error:", err);
-            setError(err.response?.data?.message || 'Failed to add ingredient.');
+            setError(err.response?.data?.message || 'Failed to add pantry item.');
         }
     };
 
-    // Delete an ingredient
     const handleDeleteItem = async (id) => {
         try {
             setError('');
@@ -65,14 +59,13 @@ export default function Dashboard() {
             setItems((prev) => prev.filter((item) => (item._id || item.id) !== id));
         } catch (err) {
             console.error("Delete item error:", err);
-            setError(err.response?.data?.message || 'Failed to delete ingredient.');
+            setError(err.response?.data?.message || 'Failed to remove pantry item.');
         }
     };
 
-    // Generate AI Recipe
     const handleGenerateRecipe = async () => {
         if (items.length === 0) {
-            setError('Please add at least one ingredient to your pantry before generating a recipe.');
+            setError('Please add at least one ingredient to your pantry before requesting an AI recipe.');
             return;
         }
 
@@ -82,7 +75,6 @@ export default function Dashboard() {
 
         try {
             const { data } = await API.post('/ai/generate-recipe');
-
             if (typeof data === 'string') {
                 setRecipe(data);
             } else if (data && data.recipe) {
@@ -91,130 +83,169 @@ export default function Dashboard() {
                 setRecipe(JSON.stringify(data, null, 2));
             }
         } catch (err) {
-            console.error("Recipe generation error:", err);
-            const serverMsg = err.response?.data?.message || err.response?.data?.error;
-            setError(serverMsg || 'Failed to generate recipe. Check server logs.');
+            console.error("Recipe error:", err);
+            setError(err.response?.data?.message || 'Failed to execute Gemini API pipeline.');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="max-w-4xl mx-auto py-8 px-4 space-y-8">
-            {/* Header Banner */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-emerald-600 to-teal-700 p-6 rounded-2xl text-white shadow-lg">
-                <div>
-                    <h1 className="text-3xl font-bold">Pantry Overview</h1>
-                    <p className="text-emerald-100 text-sm mt-1">Manage ingredients & transform them into AI recipes</p>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={handleGenerateRecipe}
-                        disabled={loading || items.length === 0}
-                        className="bg-white text-emerald-800 hover:bg-emerald-50 px-5 py-3 rounded-xl font-bold shadow transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                        {loading ? (
-                            <span className="animate-pulse">✨ Cooking up recipe...</span>
-                        ) : (
-                            <span>✨ Generate AI Recipe</span>
-                        )}
-                    </button>
-
-                    {/* Logout Button */}
+        <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16">
+            {/* Top Navigation */}
+            <nav className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
+                <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <span className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-lg">🥗</span>
+                        <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+                            Pantry Pulse AI
+                        </span>
+                    </div>
                     <button
                         onClick={handleLogout}
-                        className="bg-emerald-800/60 hover:bg-emerald-900 text-white px-4 py-3 rounded-xl font-semibold transition border border-emerald-500/30 text-sm"
+                        className="text-xs font-semibold px-4 py-2 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 hover:text-white text-slate-300 transition"
                     >
-                        Logout
+                        Sign Out
                     </button>
                 </div>
-            </div>
+            </nav>
 
-            {/* Error Banner */}
-            {error && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200 text-sm flex justify-between items-center">
-                    <span>{error}</span>
-                    <button onClick={() => setError('')} className="font-bold ml-4 hover:text-red-800">✕</button>
-                </div>
-            )}
+            <main className="max-w-5xl mx-auto px-6 pt-8 space-y-8">
+                {/* Hero Feature Banner */}
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-900/60 via-slate-900 to-teal-950/60 border border-slate-800 p-8 shadow-2xl">
+                    <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                    
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                        <div className="space-y-2">
+                            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
+                                ✨ Powered by Gemini AI
+                            </span>
+                            <h1 className="text-3xl font-extrabold tracking-tight text-white">Smart Inventory & AI Kitchen Assistant</h1>
+                            <p className="text-slate-400 text-sm max-w-xl">
+                                Track your ingredients in real-time and construct instant recipes using generative artificial intelligence.
+                            </p>
+                        </div>
 
-            {/* Add Item Form */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <h2 className="text-lg font-semibold text-slate-800 mb-4">Add New Ingredient</h2>
-                <form onSubmit={handleAddItem} className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                    <div className="sm:col-span-6">
-                        <input
-                            type="text"
-                            placeholder="Ingredient Name (e.g. Tomatoes, Eggs)"
-                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <div className="sm:col-span-4">
-                        <input
-                            type="text"
-                            placeholder="Qty (e.g. 500g, 3 pcs)"
-                            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                            value={quantity}
-                            onChange={(e) => setQuantity(e.target.value)}
-                        />
-                    </div>
-                    <div className="sm:col-span-2">
                         <button
-                            type="submit"
-                            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition shadow-sm"
+                            onClick={handleGenerateRecipe}
+                            disabled={loading || items.length === 0}
+                            className="bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-bold px-6 py-4 rounded-2xl shadow-xl shadow-emerald-500/20 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap text-sm"
                         >
-                            Add Item
+                            {loading ? (
+                                <span className="animate-pulse">⚡ Synthesizing Recipe...</span>
+                            ) : (
+                                <span>✨ Generate AI Recipe</span>
+                            )}
                         </button>
                     </div>
-                </form>
-            </div>
+                </div>
 
-            {/* Pantry List Section */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <h2 className="text-lg font-semibold text-slate-800 mb-4">Current Ingredients ({items.length})</h2>
-                {items.length === 0 ? (
-                    <div className="text-center py-8 text-slate-400">
-                        Your pantry is empty. Add a few ingredients above to get started!
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {items.map((item, index) => (
-                            <div
-                                key={item._id || item.id || index}
-                                className="flex justify-between items-center p-3.5 bg-slate-50 border border-slate-200/60 rounded-xl"
-                            >
-                                <div>
-                                    <span className="font-semibold text-slate-700">{item.name}</span>
-                                    {item.quantity && <span className="text-xs text-slate-500 ml-2">({item.quantity})</span>}
-                                </div>
-                                <button
-                                    onClick={() => handleDeleteItem(item._id || item.id)}
-                                    className="text-red-500 hover:text-red-700 text-xs font-semibold px-2 py-1 rounded hover:bg-red-50 transition"
-                                >
-                                    Delete
-                                </button>
-                            </div>
-                        ))}
+                {/* Error Banner */}
+                {error && (
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-5 py-4 rounded-2xl text-sm flex justify-between items-center">
+                        <span>{error}</span>
+                        <button onClick={() => setError('')} className="font-bold ml-4 hover:text-white">✕</button>
                     </div>
                 )}
-            </div>
 
-            {/* AI Generated Recipe Result */}
-            {recipe && (
-                <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/80 p-6 rounded-2xl shadow-sm space-y-3">
-                    <div className="flex items-center gap-2">
-                        <span className="text-xl">🍳</span>
-                        <h2 className="text-xl font-bold text-amber-900">AI Suggested Recipe</h2>
+                {/* Grid Layout: Input Form + Inventory */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    {/* Input Card */}
+                    <div className="lg:col-span-5 bg-slate-900/60 border border-slate-800 p-6 rounded-3xl shadow-xl space-y-4">
+                        <div>
+                            <h2 className="text-lg font-bold text-white">Add Pantry Item</h2>
+                            <p className="text-xs text-slate-400">Insert available ingredients for processing</p>
+                        </div>
+
+                        <form onSubmit={handleAddItem} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Item Name</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Tomatoes, Chicken, Garlic"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    required
+                                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-white placeholder-slate-600 outline-none text-sm"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Quantity / Notes</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. 500g, 3 units"
+                                    value={quantity}
+                                    onChange={(e) => setQuantity(e.target.value)}
+                                    className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-white placeholder-slate-600 outline-none text-sm"
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                className="w-full bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/20 font-semibold py-3 rounded-xl transition text-sm"
+                            >
+                                + Add Ingredient
+                            </button>
+                        </form>
                     </div>
-                    <div className="text-slate-700 whitespace-pre-wrap leading-relaxed text-sm bg-white/80 p-4 rounded-xl border border-amber-100 shadow-inner">
-                        {recipe}
+
+                    {/* Inventory List Card */}
+                    <div className="lg:col-span-7 bg-slate-900/60 border border-slate-800 p-6 rounded-3xl shadow-xl space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h2 className="text-lg font-bold text-white">Current Inventory</h2>
+                                <p className="text-xs text-slate-400">Stored items available for AI prompt context</p>
+                            </div>
+                            <span className="px-3 py-1 bg-slate-800 border border-slate-700 text-emerald-400 text-xs font-bold rounded-full">
+                                {items.length} items
+                            </span>
+                        </div>
+
+                        {items.length === 0 ? (
+                            <div className="border border-dashed border-slate-800 rounded-2xl py-12 text-center text-slate-500 text-sm">
+                                Your pantry is currently empty.
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[320px] overflow-y-auto pr-1">
+                                {items.map((item, index) => (
+                                    <div
+                                        key={item._id || item.id || index}
+                                        className="flex items-center justify-between p-4 bg-slate-950/80 border border-slate-800/80 rounded-2xl group hover:border-slate-700 transition"
+                                    >
+                                        <div className="truncate pr-2">
+                                            <p className="font-semibold text-slate-200 text-sm truncate">{item.name}</p>
+                                            {item.quantity && <p className="text-xs text-slate-500">{item.quantity}</p>}
+                                        </div>
+                                        <button
+                                            onClick={() => handleDeleteItem(item._id || item.id)}
+                                            className="opacity-60 group-hover:opacity-100 text-xs text-red-400 hover:bg-red-500/10 px-2 py-1 rounded-lg border border-red-500/20 transition"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
-            )}
+
+                {/* AI Output Terminal Card */}
+                {recipe && (
+                    <div className="bg-slate-900/90 border border-emerald-500/30 p-8 rounded-3xl shadow-2xl space-y-4 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-400"></div>
+                        
+                        <div className="flex items-center gap-3">
+                            <span className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">🍳</span>
+                            <h2 className="text-xl font-bold text-white tracking-tight">AI Generated Recipe Proposal</h2>
+                        </div>
+
+                        <div className="bg-slate-950 p-6 rounded-2xl border border-slate-800 text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-mono">
+                            {recipe}
+                        </div>
+                    </div>
+                )}
+            </main>
         </div>
     );
 }

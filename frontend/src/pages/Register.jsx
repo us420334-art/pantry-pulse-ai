@@ -6,84 +6,97 @@ export default function Register() {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const navigate = useNavigate();
 
-    const handleRegister = async (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
         setError('');
+
         try {
-            await API.post('/auth/register', { name, email, password });
-            navigate('/login');
+            const { data } = await API.post('/auth/register', { name, email, password });
+            localStorage.setItem('token', data.token);
+            navigate('/dashboard');
         } catch (err) {
-            console.error("Register error:", err);
-            setError(err.response?.data?.message || 'Registration failed.');
+            setError(err.response?.data?.message || 'Registration failed. Please try again.');
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-[85vh] flex items-center justify-center bg-slate-50 px-4">
-            <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-100 p-8">
-                <div className="text-center mb-8">
-                    <h2 className="text-3xl font-extrabold text-slate-800">Create Account</h2>
-                    <p className="text-slate-500 text-sm mt-2">Start organizing ingredients with AI</p>
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative overflow-hidden font-sans">
+            {/* Background Glow Orbs */}
+            <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute bottom-1/3 left-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div className="w-full max-w-md bg-slate-800/80 backdrop-blur-xl border border-slate-700/60 p-8 rounded-3xl shadow-2xl space-y-6 relative z-10">
+                <div className="text-center space-y-2">
+                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 font-black text-2xl shadow-lg shadow-emerald-500/20 mb-2">
+                        ✨
+                    </div>
+                    <h1 className="text-2xl font-bold tracking-tight text-white">Create Account</h1>
+                    <p className="text-slate-400 text-sm">Join Pantry Pulse AI to generate smart recipes</p>
                 </div>
 
                 {error && (
-                    <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl text-center">
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm text-center">
                         {error}
                     </div>
                 )}
 
-                <form onSubmit={handleRegister} className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+                        <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Full Name</label>
                         <input
                             type="text"
+                            required
                             placeholder="John Doe"
-                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            required
+                            className="w-full bg-slate-900/60 border border-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none transition text-sm"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                        <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Email Address</label>
                         <input
                             type="email"
-                            placeholder="you@example.com"
-                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+                            required
+                            placeholder="name@example.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            required
+                            className="w-full bg-slate-900/60 border border-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none transition text-sm"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                        <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Password</label>
                         <input
                             type="password"
+                            required
                             placeholder="••••••••"
-                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            required
+                            className="w-full bg-slate-900/60 border border-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-white placeholder-slate-500 outline-none transition text-sm"
                         />
                     </div>
 
                     <button
                         type="submit"
-                        className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition duration-200"
+                        disabled={loading}
+                        className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-emerald-500/25 transition duration-200 disabled:opacity-50 text-sm mt-2"
                     >
-                        Register Account
+                        {loading ? 'Creating Account...' : 'Register'}
                     </button>
                 </form>
 
-                <p className="text-center text-sm text-slate-500 mt-6">
+                <p className="text-center text-xs text-slate-400">
                     Already have an account?{' '}
-                    <Link to="/login" className="text-emerald-600 font-semibold hover:underline">
-                        Log In
+                    <Link to="/login" className="text-emerald-400 font-semibold hover:underline">
+                        Sign In
                     </Link>
                 </p>
             </div>
