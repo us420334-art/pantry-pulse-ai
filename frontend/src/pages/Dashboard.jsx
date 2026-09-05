@@ -16,7 +16,7 @@ export default function Dashboard() {
             setItems(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error("Fetch items error:", err);
-            setError(err.response?.data?.message || 'Failed to fetch pantry items. Please ensure you are logged in.');
+            setError(err.response?.data?.message || 'Failed to fetch pantry items.');
         }
     };
 
@@ -27,15 +27,24 @@ export default function Dashboard() {
     const handleAddItem = async (e) => {
         e.preventDefault();
         if (!name.trim()) return;
+        
+        setError('');
         try {
-            setError('');
-            await API.post('/pantry', { name, quantity });
+            const { data } = await API.post('/pantry', { name, quantity });
+            
+            // Instantly append new item to screen
+            if (data && (data._id || data.id)) {
+                setItems((prev) => [...prev, data]);
+            } else {
+                // Fallback fetch if server doesn't return full object
+                fetchItems();
+            }
+            
             setName('');
             setQuantity('');
-            fetchItems();
         } catch (err) {
             console.error("Add item error:", err);
-            setError(err.response?.data?.message || 'Failed to add item.');
+            setError(err.response?.data?.message || err.message || 'Failed to add item to database.');
         }
     };
 
@@ -43,7 +52,7 @@ export default function Dashboard() {
         try {
             setError('');
             await API.delete(`/pantry/${id}`);
-            fetchItems();
+            setItems((prev) => prev.filter((item) => (item._id || item.id) !== id));
         } catch (err) {
             console.error("Delete item error:", err);
             setError(err.response?.data?.message || 'Failed to delete item.');
@@ -136,9 +145,9 @@ export default function Dashboard() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {items.map((item) => (
+                        {items.map((item, index) => (
                             <div
-                                key={item._id || item.id}
+                                key={item._id || item.id || index}
                                 className="flex justify-between items-center p-3.5 bg-slate-50 border border-slate-200/60 rounded-xl"
                             >
                                 <div>
