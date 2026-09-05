@@ -1,57 +1,50 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 
-function App() {
-  const [token, setToken] = useState(localStorage.getItem('token'));
+// Protected Route Component
+const ProtectedRoute = ({ children }) => {
+  const token = localStorage.getItem('token');
+  // If no token exists in localStorage, send user to login page
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
 
-  useEffect(() => {
-    const handleStorageChange = () => setToken(localStorage.getItem('token'));
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    setToken(null);
-  };
-
+export default function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-gray-100 text-gray-800">
-        <nav className="bg-emerald-600 text-white px-6 py-4 flex justify-between items-center shadow-md">
-          <Link to="/" className="text-xl font-bold tracking-wide">
-            🥗 Pantry Pulse AI
-          </Link>
-          <div>
-            {token ? (
-              <button
-                onClick={handleLogout}
-                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
-              >
-                Logout
-              </button>
-            ) : (
-              <div className="space-x-4">
-                <Link to="/login" className="hover:underline text-sm font-medium">Login</Link>
-                <Link to="/register" className="bg-white text-emerald-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-100 transition">Register</Link>
-              </div>
-            )}
-          </div>
-        </nav>
+      <Routes>
+        {/* Root URL forces Login check */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
 
-        <div className="container mx-auto p-6">
-          <Routes>
-            <Route path="/login" element={!token ? <Login setToken={setToken} /> : <Navigate to="/" />} />
-            <Route path="/register" element={!token ? <Register /> : <Navigate to="/login" />} />
-            <Route path="/" element={token ? <Dashboard /> : <Navigate to="/login" />} />
-          </Routes>
-        </div>
-      </div>
+        {/* Public Auth Routes */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
+        {/* Explicit Dashboard Route */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Catch-all redirect to login */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
     </Router>
   );
 }
-
-export default App;

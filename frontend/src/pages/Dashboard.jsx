@@ -11,10 +11,12 @@ export default function Dashboard() {
 
     const fetchItems = async () => {
         try {
+            setError('');
             const { data } = await API.get('/pantry');
-            setItems(data);
+            setItems(Array.isArray(data) ? data : []);
         } catch (err) {
-            setError('Failed to fetch pantry items.');
+            console.error("Fetch items error:", err);
+            setError(err.response?.data?.message || 'Failed to fetch pantry items. Please ensure you are logged in.');
         }
     };
 
@@ -26,21 +28,25 @@ export default function Dashboard() {
         e.preventDefault();
         if (!name.trim()) return;
         try {
+            setError('');
             await API.post('/pantry', { name, quantity });
             setName('');
             setQuantity('');
             fetchItems();
         } catch (err) {
-            setError('Failed to add item.');
+            console.error("Add item error:", err);
+            setError(err.response?.data?.message || 'Failed to add item.');
         }
     };
 
     const handleDeleteItem = async (id) => {
         try {
+            setError('');
             await API.delete(`/pantry/${id}`);
             fetchItems();
         } catch (err) {
-            setError('Failed to delete item.');
+            console.error("Delete item error:", err);
+            setError(err.response?.data?.message || 'Failed to delete item.');
         }
     };
 
@@ -52,6 +58,7 @@ export default function Dashboard() {
             const { data } = await API.post('/ai/generate-recipe');
             setRecipe(data.recipe);
         } catch (err) {
+            console.error("Recipe generation error:", err);
             setError(err.response?.data?.message || 'Failed to generate recipe.');
         } finally {
             setLoading(false);
@@ -80,8 +87,9 @@ export default function Dashboard() {
             </div>
 
             {error && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200 text-sm">
-                    {error}
+                <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200 text-sm flex justify-between items-center">
+                    <span>{error}</span>
+                    <button onClick={() => setError('')} className="font-bold ml-4">✕</button>
                 </div>
             )}
 
@@ -130,7 +138,7 @@ export default function Dashboard() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {items.map((item) => (
                             <div
-                                key={item._id}
+                                key={item._id || item.id}
                                 className="flex justify-between items-center p-3.5 bg-slate-50 border border-slate-200/60 rounded-xl"
                             >
                                 <div>
@@ -138,7 +146,7 @@ export default function Dashboard() {
                                     {item.quantity && <span className="text-xs text-slate-500 ml-2">({item.quantity})</span>}
                                 </div>
                                 <button
-                                    onClick={() => handleDeleteItem(item._id)}
+                                    onClick={() => handleDeleteItem(item._id || item.id)}
                                     className="text-red-500 hover:text-red-700 text-xs font-semibold px-2 py-1 rounded hover:bg-red-50 transition"
                                 >
                                     Delete

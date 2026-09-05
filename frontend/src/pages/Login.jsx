@@ -10,11 +10,19 @@ export default function Login() {
 
     const handleLogin = async (e) => {
         e.preventDefault();
+        setError('');
         try {
             const { data } = await API.post('/auth/login', { email, password });
-            localStorage.setItem('token', data.token);
-            navigate('/');
+
+            // Save token explicitly to localStorage
+            if (data.token) {
+                localStorage.setItem('token', data.token);
+                navigate('/');
+            } else {
+                setError('Authentication token missing from response.');
+            }
         } catch (err) {
+            console.error("Login error:", err);
             setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
         }
     };
