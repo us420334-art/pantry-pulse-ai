@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Detect environment or fallback directly to Render backend URL
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://pantry-pulse-ai.onrender.com';
+// Uses local server when running on localhost, falls back to Render when deployed
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 const API = axios.create({
     baseURL: `${BASE_URL.replace(/\/$/, '')}/api`,
@@ -10,7 +10,6 @@ const API = axios.create({
     },
 });
 
-// Interceptor to automatically attach JWT token from localStorage
 API.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
